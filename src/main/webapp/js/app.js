@@ -2,7 +2,7 @@ var app = angular.module('wx', []);
 
 app.controller('autoReply', function ($scope, $http) {
     $scope.isLogin = false;
-    $scope.ipInfo = remote_ip_info;
+//    $scope.ipInfo = remote_ip_info;
     $scope.code = '';
     $http({
         method: 'GET',
@@ -18,8 +18,8 @@ app.controller('autoReply', function ($scope, $http) {
             $scope.isLogin = true;
             $scope.code = response.data.code;
             $scope.wechat = response.data.data.Wechat;
-            $scope.wechat.province = $scope.ipInfo.province;
-            $scope.wechat.city = $scope.ipInfo.city;
+//            $scope.wechat.province = $scope.ipInfo.province;
+//            $scope.wechat.city = $scope.ipInfo.city;
         }).then(function success(response) {
             $http({
                 method: 'POST',

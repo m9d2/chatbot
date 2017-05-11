@@ -178,9 +178,9 @@ public class WechatBotService {
             }
         }
         if (null != wechat.getUser().getString("UserName")) {
-            logger.info("init success:[{}][{}][{}]--{}",
+            logger.info("init success:[{}][{}]--{}",
                     wechat.getUser().getString("NickName"),
-                    wechat.getProvince().equals(wechat.getCity()) ? wechat.getProvince() : wechat.getProvince()+wechat.getCity(),
+//                    wechat.getProvince().equals(wechat.getCity()) ? wechat.getProvince() : wechat.getProvince()+wechat.getCity(),
                     wechat.getUser().getString("Sex").equals("1") ? "男" : "女",
                     wechat.getUser());
         }
