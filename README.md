@@ -21,7 +21,7 @@ wxbot是基于java web环境下的微信自动回复项目，web项目相对于�
 
 2.发布到tomcat或jetty 启动服务器
 
-[示例](https://www.ztandgy.com.cn/wxbot/index.thml):https://www.ztandgy.com.cn/wxbot/index.thml
+[示例](https://www.ztandgy.com.cn/wxbot/index.html):https://www.ztandgy.com.cn/wxbot/index.html
 
 或直接下载已打包好的[war](https://pan.baidu.com/s/1jI3ITO6)包放入tomcat或jetty webapps目录下，然后重启服务器
 
