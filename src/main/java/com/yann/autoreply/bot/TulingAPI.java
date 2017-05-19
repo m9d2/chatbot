@@ -7,15 +7,22 @@ import com.yann.autoreply.utils.Constant;
 
 public class TulingAPI {
 
-	//获取json格式数据
-    public static JSONObject getReply(String content, String userName, String location) {
+	/**
+	 * 获取回复
+	 * @param content 发送消息内容
+	 * @param userId  用户标识
+	 * @param location 位置
+	 * @return
+	 */
+    public static String getReply(String content, String userId, String location) {
+    	String reply = null;
     	JSONObject retJson = null;
     	for(String apiKey : Constant.TULING_KEY) {
 			JSONObject object = new JSONObject();
 	        object.put("key",apiKey);
 	        object.put("info", content);
 	        object.put("loc", location);
-	        object.put("userid", userName);
+	        object.put("userid", userId);
 	        String url = Constant.TULING_API;
 	        HttpRequest request = HttpRequest.post(url)
 	                .contentType(Constant.CONTENT_TYPE)
@@ -24,14 +31,15 @@ public class TulingAPI {
 	        request.disconnect();
 	        retJson = JSONObject.parseObject(ret);
 			if(!retJson.getString("code").equals("40004")) {
-				return retJson;
+				reply = handleReply(retJson);
+				return reply;
 			}
 		}
-    	return retJson;
+    	return reply;
     }
 
 	//处理json消息
-	public static String handleReply(JSONObject applyJson) {
+	private static String handleReply(JSONObject applyJson) {
 		String code = applyJson.getString("code");
 		if(code == null) {
 			return null;

@@ -3,6 +3,7 @@ package com.yann.autoreply.controller;
 import com.yann.autoreply.common.GeneralResult;
 import com.yann.autoreply.common.ResultCodeEnum;
 import com.yann.autoreply.vo.Wechat;
+import com.yann.autoreply.vo.WechatContact;
 import com.yann.autoreply.service.WechatBotService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+
 import java.util.Map;
 
 @Controller
@@ -82,28 +84,42 @@ public class WechatBotController {
 
     @ResponseBody
     @RequestMapping(value = "/start", method = RequestMethod.POST)
-    public void start(@RequestBody Wechat wechat, HttpServletRequest request) {
-        HttpSession session = request.getSession();
+    public GeneralResult<Wechat> start(@RequestBody Wechat wechat, HttpServletRequest request) {
+    	HttpSession session = request.getSession();
         session.setAttribute("wechat", wechat);
     	wechatBotService.start(wechat);
+    	return null;
     }
-
-//    @ResponseBody
-//    @RequestMapping(value = "/webwxgetcontact", method = RequestMethod.GET)
-//    public GeneralResult<WechatContact> webwxgetcontact(HttpServletRequest request) {
-//        HttpSession session = request.getSession();
-//        Wechat wechat = (Wechat) session.getAttribute("Wechat");
-//        GeneralResult<WechatContact> result = new GeneralResult<>();
-//        WechatContact wechatContact = wechatBotService.getContact(wechat);
-//        if (null != wechatContact) {
-//            result.setCode(ResultCodeEnum.SUCCESS.getCode());
-//            result.setMsg(ResultCodeEnum.SUCCESS.getDesc());
-//            result.setData(wechatContact);
-//        } else {
-//            result.setCode(ResultCodeEnum.FAILURE.getCode());
-//            result.setMsg("获取联系人失败");
-//        }
-//        return result;
-//    }
+    
+    @ResponseBody
+    @RequestMapping(value = "/webwxgetcontact", method = RequestMethod.GET)
+    public GeneralResult<WechatContact> webwxgetcontact(HttpServletRequest request) {
+    	GeneralResult<WechatContact> result = new GeneralResult<>();
+    	Wechat wechat = wechatBotService.getSessionWechat(request);
+    	if(wechat == null) {
+    		result.setCode(ResultCodeEnum.FAILURE.getCode());
+            result.setMsg("获取联系人失败");
+            return result;
+    	}
+        WechatContact wechatContact = wechatBotService.getContact(wechat);
+        if (null != wechatContact) {
+            result.setCode(ResultCodeEnum.SUCCESS.getCode());
+            result.setMsg(ResultCodeEnum.SUCCESS.getDesc());
+            result.setData(wechatContact);
+        } else {
+            result.setCode(ResultCodeEnum.FAILURE.getCode());
+            result.setMsg("获取联系人失败");
+        }
+        return result;
+    }
+    
+  @ResponseBody
+  @RequestMapping(value = "/getSession", method = RequestMethod.GET)
+  public GeneralResult<Wechat> getSession(HttpServletRequest request) {
+  	GeneralResult<Wechat> result = new GeneralResult<>();
+      Wechat wechat = wechatBotService.getSessionWechat(request);
+  	result.setData(wechat);
+  	return result;
+  }
 
 }

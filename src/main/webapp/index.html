@@ -10,19 +10,25 @@
 <script src="js/angular.min.js"></script>
 
 <body ng-app="wx" ng-controller="autoReply">
-<div class="container">
+
+<div class="container" ng-show="!showMain">
     <!-- login_box start -->
     <div class="login_box">
         <div class="qrcode">
             <img class="img" ng-src="{{imageUrl}}">&nbsp;&nbsp;&nbsp;
-            <div ng-show="!isLogin">
+            <div ng-show="!isLogin ">
                 <p class="sub_title">使用手机微信扫码登录</p>
-                <p class="sub_desc"><span>扫描成功后请在手机上点击登录按钮{{remote_ip_info}}</span></p>
+                <p class="sub_desc"><span>扫描成功后请在手机上点击登录按钮</span></p>
             </div>
             <div ng-show="code == '100'">
-                <p class="sub_title">登录成功</p>
-                <p class="sub_desc"><span>微信机器人已开启...</span></p>
+                <p class="sub_title">扫描成功</p>
+                <p class="sub_desc"><span>初始化微信机器人...</span></p>
             </div>
+            <!-- <div ng-show="isLogin">
+                <p class="sub_title">登录成功</p>
+                <p class="sub_desc"><span></span></p>
+            </div> -->
+            
             <div ng-show="code =='101'">
                 <p class="sub_title">登录失败</p>
                 <p class="sub_desc"><span>刷新页面重新登录</span></p>

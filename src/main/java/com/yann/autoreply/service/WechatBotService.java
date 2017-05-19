@@ -21,6 +21,9 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+
 /**
  *
  */
@@ -99,13 +102,13 @@ public class WechatBotService {
     
     public void start(Wechat wechat) {
         /**  设置初始化的参数和cookie **/
-        this.webwxnewloginpage(wechat);
+        webwxnewloginpage(wechat);
         /**  初始化 **/
-        this.wxInit(wechat);
+        wxInit(wechat);
         /**  设置线路 **/
-        this.setSyncLine(wechat);
+        setSyncLine(wechat);
         /** 获取联系人 **/
-        WechatContact wechatContact = this.getContact(wechat);
+        WechatContact wechatContact = getContact(wechat);
         /**  开始监听消息 **/
         HandleMsgTask handleMsgTask = new HandleMsgTask(wechat, wechatContact);
         threadPoolTaskExecutor.execute(handleMsgTask);
@@ -203,7 +206,7 @@ public class WechatBotService {
     /**
      * 获取联系人信息
      */
-    private WechatContact getContact(Wechat wechat) {
+    public WechatContact getContact(Wechat wechat) {
         String url = wechat.getWebpush_url() +
                 "/webwxgetcontact?" +
                 "pass_ticket=" + wechat.getPassTicket() +
@@ -231,10 +234,12 @@ public class WechatBotService {
                         // 公众号/服务号
                         if ((Integer) contact.get("VerifyFlag") == 8) {
                             continue;
-                        }else if((Integer) contact.get("VerifyFlag") == 24) { // 微信服务号
-                        	
-                        } else if((Integer) contact.get("VerifyFlag") == 56) { //微信官方账号
-                        	
+                        }
+                        else if((Integer) contact.get("VerifyFlag") == 24) { // 微信服务号
+                        	continue;
+                        } 
+                        else if((Integer) contact.get("VerifyFlag") == 56) { //微信官方账号
+                        	continue;
                         }
                         // 群聊
                         else if (contact.getString("UserName").contains("@@")) {
@@ -247,8 +252,10 @@ public class WechatBotService {
                         //特殊用户
                         else if (Constant.FILTER_USERS.contains(contact.get("UserName"))) {
                             continue;
+                        } 
+                        else if((Integer) contact.get("VerifyFlag") == 0){
+                        	contactList.add(contact);
                         }
-                        contactList.add(contact);
                     }
                     wechatContact.setContactList(contactList);
                     wechatContact.setContactCount(contactList.size());
@@ -341,5 +348,15 @@ public class WechatBotService {
         wechatContact.setContactCount((Integer) object.get("Count"));
         wechatContact.setContactList((JSONArray) object.get("List"));
         return wechatContact;
+    }
+    
+    
+    public Wechat getSessionWechat(HttpServletRequest request) {
+    	if(request.getSession() ==null) {
+    		return null;
+    	}
+    	HttpSession session = request.getSession();
+    	Wechat wechat = (Wechat) session.getAttribute("wechat");
+    	return wechat;
     }
 }

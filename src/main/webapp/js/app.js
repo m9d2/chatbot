@@ -2,6 +2,7 @@ var app = angular.module('wx', []);
 
 app.controller('autoReply', function ($scope, $http) {
     $scope.isLogin = false;
+    $scope.showMain = false;
 //    $scope.ipInfo = remote_ip_info;
     $scope.code = '';
     $http({
@@ -15,7 +16,6 @@ app.controller('autoReply', function ($scope, $http) {
             url: 'login.do',
             data: $scope.uuid
         }).then(function success(response) {
-            $scope.isLogin = true;
             $scope.code = response.data.code;
             $scope.wechat = response.data.data.Wechat;
 //            $scope.wechat.province = $scope.ipInfo.province;
@@ -26,7 +26,9 @@ app.controller('autoReply', function ($scope, $http) {
                 url: 'start.do',
                 data: $scope.wechat
             }).then(function success(response) {
-
+            	$scope.isLogin = true;
+            	settimeout("","3000");
+                window.location = "main.html";
             });
         });
     });

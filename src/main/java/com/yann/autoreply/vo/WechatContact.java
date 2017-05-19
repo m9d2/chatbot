@@ -2,6 +2,7 @@ package com.yann.autoreply.vo;
 
 
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 
 public class WechatContact {
 
@@ -31,7 +32,16 @@ public class WechatContact {
 	}
 
 	public void setContactList(JSONArray contactList) {
-		this.contactList = contactList;
+		JSONArray array = new JSONArray();
+		for(Object json : contactList) {
+			JSONObject jsonObject = (JSONObject) json;
+			jsonObject.put("NickName", jsonObject.getString("NickName").replaceAll("<.*>", ""));
+			jsonObject.put("RemarkName", jsonObject.getString("RemarkName").replaceAll("<.*>", ""));
+			jsonObject.put("Signature", jsonObject.getString("Signature").replaceAll("<.*>", ""));
+			jsonObject.put("Sex", jsonObject.getString("Sex").equals("1") ? "男":"女");
+			array.add(jsonObject);
+		}
+		this.contactList = array;
 	}
 
 	public Integer getGroupCount() {

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link href="css/H-ui.css" rel="stylesheet">
+    <script src="js/H-ui.js"></script>
+    <script type="text/javascript" src="http://g.alicdn.com/sj/lib/jquery/dist/jquery.min.js"></script>
+    <script src="http://cdn.static.runoob.com/libs/angular.js/1.4.6/angular.min.js"></script>
+</head>
+<body>
+
+<header class="navbar-wrapper">
+    <div class="navbar navbar-black">
+        <div class="container cl">
+            <a class="logo navbar-logo f-l mr-10 hidden-xs" href="/aboutHui.shtml">WXBot</a>
+
+            <nav class="nav navbar-nav nav-collapse" role="navigation" id="Hui-navbar">
+                <ul class="cl">
+                    <!--<li class="current"><a href="/">首页</a></li>-->
+                    <li class="current"><a href="#">联系人</a></li>
+                    <li><a href="#">群聊</a></li>
+                    <li><a href="#">设置</a></li>
+                </ul>
+            </nav>
+            <nav class="navbar-userbar hidden-xs">
+
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div ng-app="myApp" ng-controller="customersCtrl" style="margin: 10px 0;">
+	<div class="row">
+		<div class="col-sm-6 col-sm-offset-3">
+			<table class="table table-border table-bordered table-hover">
+			    <thead>
+			    <tr>
+			        <th>名字</th>
+			        <th>备注</th>
+			        <th>地区</th>
+			        <th>性别</th>
+			        <th>个性签名</th>
+			        <th>操作</th>
+			    </tr>
+			    </thead>
+			    <tbody>
+			    <tr ng-repeat="x in data">
+			       <td>{{x.NickName}}</td>
+			       <td>{{x.RemarkName}}</td>
+			       <td>{{x.Province}}{{x.City}}</td>
+			       <td>{{x.Sex}}</td>
+			       <td>{{x.Signature}}</td>
+			       <td><input class="btn btn-secondary-outline radius" type="button" value="设置" id="{{x.UserName}}"></td>
+			    </tr>
+			    </tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<script>
+    var app = angular.module('myApp', []);
+    app.controller('customersCtrl', function($scope, $http) {
+    	$http({
+            method: 'GET',
+            url: 'webwxgetcontact.do'
+        }).then(function (response) {
+        	$scope.data = response.data.data.contactList;
+        })
+    });
+</script>
+</body>
+</html>
