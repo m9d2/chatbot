@@ -1,8 +1,8 @@
-# wxbot 
+# chatbot 
 
 ### About
 
-wxbot是基于java web环境下的微信自动回复项目，web项目相对于其他语言项目(如Python)使用更方便
+chatbot是基于java web环境下的微信自动回复项目，web项目相对于其他语言项目(如Python)使用更方便
 
 ### Introduction
 
