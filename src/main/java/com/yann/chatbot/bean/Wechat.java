@@ -1,10 +1,8 @@
-package com.yann.autoreply.vo;
+package com.yann.chatbot.bean;
 
 import com.alibaba.fastjson.JSONObject;
 import com.blade.kit.DateKit;
-import com.yann.autoreply.utils.Constant;
-
-import javax.servlet.http.HttpSession;
+import com.yann.chatbot.utils.Constant;
 
 public class Wechat {
 
@@ -30,9 +28,8 @@ public class Wechat {
 
     private String syncKeyStr;
 
-    private HttpSession session;
-
     private String province;
+
     private String city;
 
     public String getCity() {
@@ -144,14 +141,6 @@ public class Wechat {
         this.syncKeyStr = syncKeyStr;
     }
 
-    public HttpSession getSession() {
-        return session;
-    }
-
-    public void setSession(HttpSession session) {
-        this.session = session;
-    }
-
     public JSONObject getBaseRequest() {
         return baseRequest;
     }
@@ -190,7 +179,6 @@ public class Wechat {
         sb.append(", cookie='").append(cookie).append('\'');
         sb.append(", deviceId='").append(deviceId).append('\'');
         sb.append(", syncKeyStr='").append(syncKeyStr).append('\'');
-        sb.append(", session=").append(session);
         sb.append(", province='").append(province).append('\'');
         sb.append(", city='").append(city).append('\'');
         sb.append(", baseRequest=").append(baseRequest);

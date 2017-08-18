@@ -1,4 +1,4 @@
-package com.yann.autoreply.common;
+package com.yann.chatbot.common;
 
 import java.io.Serializable;
 

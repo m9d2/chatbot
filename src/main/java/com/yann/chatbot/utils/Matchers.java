@@ -1,10 +1,10 @@
-package com.yann.autoreply.utils;
+package com.yann.chatbot.utils;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Created by HSM11 on 2017/4/11.
+ * Created by Yann on 2017/4/11.
  */
 public class Matchers {
     public static String match(String p, String str){

@@ -1,4 +1,4 @@
-package com.yann.autoreply.vo;
+package com.yann.chatbot.bean;
 
 
 import com.alibaba.fastjson.JSONArray;

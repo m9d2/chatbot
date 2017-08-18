@@ -1,4 +1,4 @@
-package com.yann.autoreply.service;
+package com.yann.chatbot.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -6,10 +6,13 @@ import com.alibaba.fastjson.JSONObject;
 import com.blade.kit.DateKit;
 import com.blade.kit.StringKit;
 import com.blade.kit.http.HttpRequest;
-import com.yann.autoreply.vo.Wechat;
-import com.yann.autoreply.task.HandleMsgTask;
-import com.yann.autoreply.utils.*;
-import com.yann.autoreply.vo.WechatContact;
+import com.yann.chatbot.common.UserContext;
+import com.yann.chatbot.task.HandleMsgTask;
+import com.yann.chatbot.utils.Constant;
+import com.yann.chatbot.utils.CookieUtil;
+import com.yann.chatbot.utils.Matchers;
+import com.yann.chatbot.bean.Wechat;
+import com.yann.chatbot.bean.WechatContact;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 /**
  *
@@ -36,29 +36,27 @@ public class WechatBotService {
 
     private static final Logger logger = LoggerFactory.getLogger(WechatBotService.class);
 
-    static {
-        System.setProperty("jsse.enableSNIExtension", "false");
+    public WechatBotService() {
+        System.setProperty ("jsse.enableSNIExtension", "false");
     }
 
     /**
      * 获取二维码
      */
-    public Map<String, Object> getQrcodeUrl() {
-        Map<String, Object> map = new HashMap<>();
+    public String getQrcodeUrl() {
         //获取uuid
         String uuid = this.getUUID();
-        if (null != uuid) {
-            map.put("uuid", uuid);
-            map.put("url", Constant.QRCODE_URL + uuid);
-        }
-        return map;
+        Map<String, String> map = new HashMap<>();
+        map.put("uuid", uuid);
+        UserContext.setWechat(map);
+        return Constant.QRCODE_URL + uuid;
     }
 
     /**
      * 等待扫二维码登录
      */
-    public Map<String, Object> login(String uuid) {
-        Wechat wechat = new Wechat();
+    public Map<String, Object> login() {
+        Wechat wechat = UserContext.getWechat();
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -67,7 +65,7 @@ public class WechatBotService {
         String url = Constant.BASE_URL +
                 "/login?" +
                 "tip=1" +
-                "&uuid=" + uuid;
+                "&uuid=" + wechat.getUuid();
 
         Map<String, Object> map = new HashMap<>();
         HttpRequest request = HttpRequest.get(url);
@@ -85,6 +83,7 @@ public class WechatBotService {
                     String base_uri = redirect_uri.substring(0, redirect_uri.lastIndexOf("/"));
                     wechat.setBase_uri(base_uri);
                     map.put("Wechat", wechat);
+                    UserContext.setWechat(wechat);
                 }
                 return map;
             } else if (code.equals("201")) {  //成功扫描,未在手机上点击确认以登录
@@ -100,17 +99,15 @@ public class WechatBotService {
         return null;
     }
     
-    public void start(Wechat wechat) {
+    public void start() {
         /**  设置初始化的参数和cookie **/
-        webwxnewloginpage(wechat);
+        webwxnewloginpage();
         /**  初始化 **/
-        wxInit(wechat);
+        wxInit();
         /**  设置线路 **/
-        setSyncLine(wechat);
-        /** 获取联系人 **/
-        WechatContact wechatContact = getContact(wechat);
+        setSyncLine();
         /**  开始监听消息 **/
-        HandleMsgTask handleMsgTask = new HandleMsgTask(wechat, wechatContact);
+        HandleMsgTask handleMsgTask = new HandleMsgTask();
         threadPoolTaskExecutor.execute(handleMsgTask);
     }
 
@@ -124,7 +121,8 @@ public class WechatBotService {
     /**
      * 设置初始化的参数和cookie
      */
-    private void webwxnewloginpage(Wechat wechat) {
+    private void webwxnewloginpage() {
+        Wechat wechat = UserContext.getWechat();
         String url = wechat.getRedirect_uri();
         HttpRequest request = HttpRequest.get(url);
         String res = request.body();
@@ -140,7 +138,8 @@ public class WechatBotService {
     /**
      * 微信初始化
      */
-    private void wxInit(Wechat wechat) {
+    private void wxInit() {
+        Wechat wechat = UserContext.getWechat();
         String url = wechat.getBase_uri() +
                 "/webwxinit?" +
                 "pass_ticket=" +
@@ -192,7 +191,8 @@ public class WechatBotService {
     /**
      * 选择线路
      */
-    private void setSyncLine(Wechat wechat) {
+    private void setSyncLine() {
+        Wechat wechat = UserContext.getWechat();
         for (String syncUrl : Constant.HOST) {
             int[] res = this.synccheck(wechat, syncUrl);
             if (res[0] == 0) {
@@ -206,7 +206,8 @@ public class WechatBotService {
     /**
      * 获取联系人信息
      */
-    public WechatContact getContact(Wechat wechat) {
+    public WechatContact getContact() {
+        Wechat wechat = UserContext.getWechat();
         String url = wechat.getWebpush_url() +
                 "/webwxgetcontact?" +
                 "pass_ticket=" + wechat.getPassTicket() +
@@ -348,15 +349,5 @@ public class WechatBotService {
         wechatContact.setContactCount((Integer) object.get("Count"));
         wechatContact.setContactList((JSONArray) object.get("List"));
         return wechatContact;
-    }
-    
-    
-    public Wechat getSessionWechat(HttpServletRequest request) {
-    	if(request.getSession() ==null) {
-    		return null;
-    	}
-    	HttpSession session = request.getSession();
-    	Wechat wechat = (Wechat) session.getAttribute("wechat");
-    	return wechat;
     }
 }

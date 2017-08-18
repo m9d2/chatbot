@@ -1,10 +1,10 @@
-package com.yann.autoreply.common;
+package com.yann.chatbot.common;
 
 public enum ResultCodeEnum {
 
-	SUCCESS("100", "success"),
-    FAILURE("101", "error"),
-    OVERTIME("102", "overtime");
+	SUCCESS("1", "success"),
+    FAILURE("2", "error"),
+    OVERTIME("3", "overtime");
 
     private String code;
     private String desc;

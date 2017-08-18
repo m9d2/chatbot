@@ -1,5 +1,6 @@
-package com.yann.autoreply.task;
+package com.yann.chatbot.task;
 
+import com.yann.chatbot.common.UserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,11 +10,11 @@ import com.alibaba.fastjson.JSONObject;
 import com.blade.kit.DateKit;
 import com.blade.kit.StringKit;
 import com.blade.kit.http.HttpRequest;
-import com.yann.autoreply.bot.TulingAPI;
-import com.yann.autoreply.service.WechatBotService;
-import com.yann.autoreply.utils.Constant;
-import com.yann.autoreply.vo.Wechat;
-import com.yann.autoreply.vo.WechatContact;
+import com.yann.chatbot.api.TulingAPI;
+import com.yann.chatbot.service.WechatBotService;
+import com.yann.chatbot.utils.Constant;
+import com.yann.chatbot.bean.Wechat;
+import com.yann.chatbot.bean.WechatContact;
 
 public class HandleMsgTask implements Runnable {
 
@@ -23,9 +24,9 @@ public class HandleMsgTask implements Runnable {
 	private WechatContact wContact;
 	private static int threadCount = 0;
 
-	public HandleMsgTask(Wechat wechat, WechatContact wechatContact) {
-		this.wechat = wechat;
-		this.wContact = wechatContact;
+	public HandleMsgTask() {
+		this.wechat = UserContext.getWechat();
+		this.wContact = wechatBotService.getContact();
 	}
 
 	@Override

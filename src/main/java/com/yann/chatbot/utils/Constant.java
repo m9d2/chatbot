@@ -1,10 +1,11 @@
-package com.yann.autoreply.utils;
+package com.yann.chatbot.utils;
 
 import java.util.Arrays;
 import java.util.List;
 
 public class Constant {
 
+    public static final String CONTENT_ENCODING = "UTF-8";
     public static final String APPID = "wx782c26e4c19acffb";
     public static final String JS_LOGIN_URL = "https://login.weixin.qq.com/jslogin";
     public static final String QRCODE_URL = "https://login.weixin.qq.com/qrcode/";

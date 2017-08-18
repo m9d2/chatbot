@@ -1,4 +1,4 @@
-package com.yann.autoreply.utils;
+package com.yann.chatbot.utils;
 
 import com.blade.kit.http.HttpRequest;
 
