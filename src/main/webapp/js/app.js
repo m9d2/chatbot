@@ -3,7 +3,7 @@ var app = angular.module('wx', []);
 app.controller('autoReply', function ($scope, $http) {
     $scope.isLogin = false;
     $scope.showMain = false;
-//    $scope.ipInfo = remote_ip_info;
+    $scope.ipInfo = remote_ip_info;
     $scope.code = '';
     $http({
         method: 'GET',
@@ -14,11 +14,13 @@ app.controller('autoReply', function ($scope, $http) {
             method: 'GET',
             url: 'login.do',
         }).then(function success() {
+            $scope.code = response.data.code;
+            $scope.isLogin = true;
             $http({
                 method: 'GET',
                 url: 'start.do',
             }).then(function success() {
-            	$scope.isLogin = true;
+
             });
         });
     });
