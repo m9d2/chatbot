@@ -5,6 +5,7 @@
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
 </head>
 <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 <body>
 <div class="container">
     <div class="login_box">
@@ -13,7 +14,7 @@
             <div>
                 <p class="sub_title">使用手机微信扫码登录</p>
                 <p class="sub_desc"><span>扫描成功后请在手机上点击登录按钮</span></p>
-                <button class="sub_desc"><span>已扫描二维码</span></button>
+                <button type="button" class="btn btn-success"><span>已扫描二维码</span></button>
             </div>
         </div>
     </div>
@@ -22,6 +23,7 @@
 <script>
     $("button").click(function(){
         $.get("login",function(data,status){
+            
         });
     });
 </script>
