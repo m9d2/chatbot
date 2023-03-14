@@ -16,49 +16,33 @@ import com.gy.chatbot.task.HandleMsgTask;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- *
- */
-
 @Slf4j
-@Service
 public class WechatBotService {
-	
-	@Autowired
-	private ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
-    /**
-     * 获取二维码url
-     * @return url
-     */
-    public String getQRCodeUrl() {
-        //获取uuid
-        String uuid = this.getUUID();
-        Map<String, String> map = new HashMap<>();
-        map.put("uuid", uuid);
-        UserContext.setWechat(map);
-        return Constant.QRCODE_URL + uuid;
+    private final Wechat wechat;
+
+    public WechatBotService() {
+        this.wechat = UserContext.getWechat();
     }
 
-    /**
-     * 等待扫二维码登录
-     * @return
-     */
+    public Wechat getWechat() {
+        return wechat;
+    }
+
     public int login() {
-        Wechat wechat = UserContext.getWechat();
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        assert wechat != null;
         String url = Constant.BASE_URL +
                 "/login?" +
                 "tip=1" +
@@ -79,7 +63,6 @@ public class WechatBotService {
                         wechat.setRedirect_uri(redirect_uri + "&fun=new");
                         String base_uri = redirect_uri.substring(0, redirect_uri.lastIndexOf("/"));
                         wechat.setBase_uri(base_uri);
-                        UserContext.setWechat(wechat);
                     }
                     return 200;
                 //成功扫描,未在手机上点击确认以登录
@@ -94,21 +77,14 @@ public class WechatBotService {
     }
     
     public void start() {
-        /**  设置初始化的参数和cookie **/
         webWxNewLoginPage();
-        /**  初始化 **/
         wxInit();
-        /**  设置线路 **/
         setSyncLine();
-        /**  开始监听消息 **/
-        HandleMsgTask handleMsgTask = new HandleMsgTask();
-        threadPoolTaskExecutor.execute(handleMsgTask);
+        HandleMsgTask handleMsgTask = new HandleMsgTask(this);
+        Executors.newFixedThreadPool(1).execute(handleMsgTask);
     }
 
-    /**
-     * 检测心跳
-     */
-    public int[] syncCheck(Wechat wechat) {
+    public int[] syncCheck() {
         return this.syncCheck(wechat, null);
     }
     
@@ -116,8 +92,6 @@ public class WechatBotService {
      * 设置初始化的参数和cookie
      */
     private void webWxNewLoginPage() {
-        Wechat wechat = UserContext.getWechat();
-        assert wechat != null;
         String url = wechat.getRedirect_uri();
         HttpRequest request = HttpRequest.get(url);
         String res = request.body();
@@ -134,7 +108,6 @@ public class WechatBotService {
      * 微信初始化
      */
     private void wxInit() {
-        Wechat wechat = UserContext.getWechat();
         assert wechat != null;
         String url = wechat.getBase_uri() +
                 "/webwxinit?" +
@@ -184,7 +157,6 @@ public class WechatBotService {
      * 选择线路
      */
     private void setSyncLine() {
-        Wechat wechat = UserContext.getWechat();
         for (String syncUrl : Constant.HOST) {
             int[] res = this.syncCheck(wechat, syncUrl);
             if (res[0] == 0) {
@@ -196,11 +168,8 @@ public class WechatBotService {
         }
     }
 
-    /**
-     * 获取联系人信息
-     */
+
     public WechatContact getContact() {
-        Wechat wechat = UserContext.getWechat();
         assert wechat != null;
         String url = wechat.getWebpush_url() +
                 "/webwxgetcontact?" +
@@ -257,34 +226,6 @@ public class WechatBotService {
         return null;
     }
 
-    /**
-     * 获取uuid
-     */
-    private String getUUID() {
-        String url = Constant.JS_LOGIN_URL +
-                "?appid=" + Constant.APPID +        //设置参数:appid
-                "&fun=new" +                        //设置参数:fun
-                "&lang=zh_CN" +                     //设置参数:lang
-                "&_=" + System.currentTimeMillis(); //_的值为时间戳
-        HttpRequest request = HttpRequest.get(url);
-        request.disconnect();
-        String res = request.body();
-        if (null != res) {
-            String code = Matchers.match("window.QRLogin.code = (\\d+);", res);
-            if (null != code) {
-                if (code.equals("200")) {
-                    return Matchers.match("window.QRLogin.uuid = \"(.*)\";", res);
-                } else {
-                    return null;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 检测心跳
-     */
     private int[] syncCheck(Wechat wechat, String url) {
         if (null == url) {
             url = wechat.getWebpush_url() + "/synccheck";
@@ -312,9 +253,6 @@ public class WechatBotService {
         return arr;
     }
 
-    /**
-     * 获取群聊信息
-     */
 	private WechatContact getGroup(Wechat wechat) {
         String url = Constant.BASE_URL +
                 "/webwxbatchgetcontact?" +

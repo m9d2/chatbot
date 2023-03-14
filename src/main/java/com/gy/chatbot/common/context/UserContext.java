@@ -2,14 +2,16 @@ package com.gy.chatbot.common.context;
 
 
 import com.gy.chatbot.bean.Wechat;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.servlet.http.HttpSession;
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Objects;
 
+@Slf4j
 public class UserContext {
-	private static ThreadLocal<HttpSession> localHttpSession = new ThreadLocal<HttpSession>();
+	private static ThreadLocal<HttpSession> localHttpSession = new ThreadLocal<>();
 
 	/**
 	 * 登陆用户Session key
@@ -33,6 +35,7 @@ public class UserContext {
 		if(session != null){
 			session.setAttribute(LOCAL_WECHAT_KEY, wechat);
 		}
+		log.info("Wechat login - nickname: {}", wechat.getUser());
 	}
 
 	public static void setWechat(Map<String, String> map) {
@@ -68,6 +71,10 @@ public class UserContext {
 		return null;
 	}
 
+	private static Wechat getWechat(HttpSession httpSession) {
+		return (Wechat) httpSession.getAttribute(LOCAL_WECHAT_KEY);
+	}
+
 	public static String getCookie() {
 		return Objects.requireNonNull(getWechat()).getCookie();
 	}
@@ -77,8 +84,11 @@ public class UserContext {
 	 */
 	public static void invalidate(){
 		HttpSession session = getHttpSession();
+		Wechat wechat;
 		if(session != null){
+			wechat = getWechat(session);
 			session.invalidate();
+			log.info("Wechat logout - nickname: {}", wechat.getUser());
 		}
 	}
 }
