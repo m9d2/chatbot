@@ -35,6 +35,7 @@ public class HandleMsgTask implements Runnable {
              */
             int[] syncCheck = wechatBotService.syncCheck();
 
+            log.info("心跳检测...");
             // 请求异常
             if (syncCheck[0] == -1) {
                 break;
@@ -60,11 +61,6 @@ public class HandleMsgTask implements Runnable {
                     }
                     case 7: // 进入/离开聊天界面
                 }
-            }
-            try {
-                Thread.sleep(2000); // 等待2s
-            } catch (InterruptedException e) {
-                UserContext.invalidate();
             }
         }
     }

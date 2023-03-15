@@ -9,10 +9,12 @@ import com.gy.chatbot.common.utils.JsonUtils;
 import com.gy.chatbot.common.utils.Matchers;
 import com.gy.chatbot.service.WechatBotService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -23,6 +25,9 @@ import java.util.Map;
 @RequestMapping("/")
 public class WechatBotController {
 
+    @Autowired
+    private RestTemplate restTemplate;
+
     /**
      * 获取微信二维码url
      *
@@ -30,14 +35,19 @@ public class WechatBotController {
      */
     @GetMapping
     public String getImageUrl(Model model) {
-        String url = getQRCodeUrl();
+        WechatBotService wechatBotService = new WechatBotService(restTemplate);
+        String uuid = wechatBotService.getUUID();
+        Map<String, String> map = new HashMap<>();
+        map.put("uuid", uuid);
+        UserContext.setWechat(map);
+        String url = Constant.QRCODE_URL + uuid;
         model.addAttribute("url", url);
         return "index";
     }
 
     @RequestMapping("login")
     public String getUrl(Model model) {
-        WechatBotService wechatBotService = new WechatBotService();
+        WechatBotService wechatBotService = new WechatBotService(restTemplate);
         int ret = wechatBotService.login();
         if(ret != 0) {
             while (ret == 201) {
@@ -86,34 +96,4 @@ public class WechatBotController {
         return "index";
     }
 
-    private String getQRCodeUrl() {
-        //获取uuid
-        String uuid = this.getUUID();
-        Map<String, String> map = new HashMap<>();
-        map.put("uuid", uuid);
-        UserContext.setWechat(map);
-        return Constant.QRCODE_URL + uuid;
-    }
-
-    private String getUUID() {
-        String url = Constant.JS_LOGIN_URL +
-                "?appid=" + Constant.APPID +
-                "&fun=new" +
-                "&lang=zh_CN" +
-                "&_=" + System.currentTimeMillis();
-        HttpRequest request = HttpRequest.get(url);
-        request.disconnect();
-        String res = request.body();
-        if (null != res) {
-            String code = Matchers.match("window.QRLogin.code = (\\d+);", res);
-            if (null != code) {
-                if (code.equals("200")) {
-                    return Matchers.match("window.QRLogin.uuid = \"(.*)\";", res);
-                } else {
-                    return null;
-                }
-            }
-        }
-        return null;
-    }
 }

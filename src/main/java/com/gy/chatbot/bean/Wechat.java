@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.blade.kit.DateKit;
 import com.gy.chatbot.common.utils.Constant;
 import lombok.Data;
+import org.springframework.util.MultiValueMap;
 
 @Data
 public class Wechat {
@@ -34,25 +35,9 @@ public class Wechat {
 
     private String city;
 
-    public String getCity() {
-        return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public String getProvince() {
-        return province;
-    }
-
-    public void setProvince(String province) {
-        this.province = province;
-    }
-
     /** 微信初始化参数 **/
-    private JSONObject baseRequest;
-    private JSONObject syncKey;
-    private JSONObject user;
+    private MultiValueMap<String, Object> baseRequest;
+    private MultiValueMap<String, Object> syncKey;
+    private MultiValueMap<String, Object> user;
 
 }
