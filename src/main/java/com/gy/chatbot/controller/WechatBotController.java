@@ -1,12 +1,9 @@
 package com.gy.chatbot.controller;
 
-import com.blade.kit.http.HttpRequest;
-import com.gy.chatbot.bean.Wechat;
 import com.gy.chatbot.bean.WechatContact;
 import com.gy.chatbot.common.context.UserContext;
 import com.gy.chatbot.common.utils.Constant;
 import com.gy.chatbot.common.utils.JsonUtils;
-import com.gy.chatbot.common.utils.Matchers;
 import com.gy.chatbot.service.WechatBotService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +46,7 @@ public class WechatBotController {
     public String getUrl(Model model) {
         WechatBotService wechatBotService = new WechatBotService(restTemplate);
         int ret = wechatBotService.login();
-        if(ret != 0) {
+        if(ret != -1) {
             while (ret == 201) {
                 wechatBotService.login();
             }

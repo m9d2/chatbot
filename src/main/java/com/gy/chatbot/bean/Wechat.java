@@ -1,10 +1,11 @@
 package com.gy.chatbot.bean;
 
 import com.alibaba.fastjson.JSONObject;
-import com.blade.kit.DateKit;
 import com.gy.chatbot.common.utils.Constant;
+import com.gy.chatbot.common.utils.DateUtil;
 import lombok.Data;
-import org.springframework.util.MultiValueMap;
+
+import java.util.Map;
 
 @Data
 public class Wechat {
@@ -27,7 +28,7 @@ public class Wechat {
 
     private String cookie;
 
-    private String deviceId = "e" + DateKit.getCurrentUnixTime();;
+    private String deviceId = "e" + DateUtil.currentTimeSeconds();
 
     private String syncKeyStr;
 
@@ -36,8 +37,8 @@ public class Wechat {
     private String city;
 
     /** 微信初始化参数 **/
-    private MultiValueMap<String, Object> baseRequest;
-    private MultiValueMap<String, Object> syncKey;
-    private MultiValueMap<String, Object> user;
+    private Map<String, Object> baseRequest;
+    private JSONObject syncKey;
+    private JSONObject user;
 
 }

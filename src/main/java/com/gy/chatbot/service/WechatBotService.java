@@ -6,22 +6,26 @@ import com.alibaba.fastjson.JSONObject;
 import com.blade.kit.DateKit;
 import com.blade.kit.StringKit;
 import com.blade.kit.http.HttpRequest;
+import com.blade.kit.http.HttpRequestException;
 import com.gy.chatbot.bean.Wechat;
 import com.gy.chatbot.bean.WechatContact;
 import com.gy.chatbot.common.ServiceException;
 import com.gy.chatbot.common.context.UserContext;
 import com.gy.chatbot.common.utils.Constant;
+import com.gy.chatbot.common.utils.DateUtil;
 import com.gy.chatbot.common.utils.Matchers;
+import com.gy.chatbot.common.utils.UrlEncode;
 import com.gy.chatbot.task.HandleMsgTask;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.*;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,50 +46,47 @@ public class WechatBotService {
         return wechat;
     }
 
-    public int login() {
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        String url = Constant.BASE_URL +
-                "/login?" +
-                "tip=1" +
-                "&uuid=" + wechat.getUuid();
-
-
-        String res = restTemplate.getForObject(url, String.class);
-        String code = Matchers.match("window.code=(\\d+);", res);
-        if (null != code) {
-            switch (code) {
-                //登录成功
-                case "200":
-                    Pattern pattern = Pattern.compile("(?<=\").*?(?=\")");
-                    Matcher m = pattern.matcher(res);
-                    if (m.find()) {
-                        String redirect_uri = m.group(0);
-                        wechat.setRedirect_uri(redirect_uri + "&fun=new");
-                        String base_uri = redirect_uri.substring(0, redirect_uri.lastIndexOf("/"));
-                        wechat.setBase_uri(base_uri);
-                    }
-                    return 200;
-                //成功扫描,未在手机上点击确认以登录
-                case "201":
-                    return 201;
-                //登录超时
-                case "408":
-                    return 408;
-            }
-        }
-        return 0;
-    }
-    
     public void start() {
         webWxNewLoginPage();
         wxInit();
         setSyncLine();
         HandleMsgTask handleMsgTask = new HandleMsgTask(this);
         Executors.newFixedThreadPool(1).execute(handleMsgTask);
+    }
+
+    public int login() {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        String url = Constant.BASE_URL + "/login?tip=1&uuid=" + wechat.getUuid();
+        String res = restTemplate.getForObject(url, String.class);
+        if (res != null) {
+            String codeStr= Matchers.match("window.code=(\\d+);", res);
+            if (codeStr != null) {
+                int code = Integer.parseInt(codeStr);
+                switch (code) {
+                    //登录成功
+                    case 200:
+                        Pattern pattern = Pattern.compile("(?<=\").*?(?=\")");
+                        Matcher m = pattern.matcher(res);
+                        if (m.find()) {
+                            String redirect_uri = m.group(0);
+                            wechat.setRedirect_uri(redirect_uri + "&fun=new");
+                            String base_uri = redirect_uri.substring(0, redirect_uri.lastIndexOf("/"));
+                            wechat.setBase_uri(base_uri);
+                        }
+                        return code;
+                    //成功扫描,未在手机上点击确认以登录
+                    case 201:
+                    //登录超时
+                    case 408:
+                        return code;
+                }
+            }
+        }
+        return -1;
     }
 
     public int[] syncCheck() {
@@ -119,25 +120,31 @@ public class WechatBotService {
                 "&skey=" +
                 wechat.getSkey() +
                 "&r=" +
-                System.currentTimeMillis();
+                DateUtil.currentTimeMillis();
 
-        MultiValueMap<String, Object> params = new LinkedMultiValueMap<String, Object>();
-        params.add("Uin", wechat.getWxuin());
-        params.add("Sid", wechat.getWxsid());
-        params.add("Skey", wechat.getSkey());
-        params.add("DeviceID", wechat.getDeviceId());
-        wechat.setBaseRequest(params);
-        params.add("BaseRequest", wechat.getBaseRequest());
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("Uin", wechat.getWxuin());
+        params.put("Sid", wechat.getWxsid());
+        params.put("Skey", wechat.getSkey());
+        params.put("DeviceID", wechat.getDeviceId());
 
-        String res = sendRequest(url, params);
-        JSONObject object = JSON.parseObject(res);
-        if (null != object) {
-            JSONObject BaseResponse = (JSONObject) object.get("BaseResponse");
+        Map<String, Object> baseRequest = new LinkedHashMap<>();
+        baseRequest.put("Uin", wechat.getWxuin());
+        baseRequest.put("Sid", wechat.getWxsid());
+        baseRequest.put("Skey", wechat.getSkey());
+        baseRequest.put("DeviceID", wechat.getDeviceId());
+        wechat.setBaseRequest(baseRequest);
+        params.put("BaseRequest", wechat.getBaseRequest());
+
+        String resStr = restTemplate.postForObject(url, params, String.class);
+        JSONObject res = JSONObject.parseObject(resStr);
+        if (null != res) {
+            JSONObject BaseResponse = (JSONObject) res.get("BaseResponse");
             if (null != BaseResponse) {
                 int ret = BaseResponse.getInteger("Ret");
                 if (ret == 0) {
-                    wechat.setSyncKey(object.getJSONObject("SyncKey"));
-                    wechat.setUser(object.getJSONObject("User"));
+                    wechat.setSyncKey(res.getJSONObject("SyncKey"));
+                    wechat.setUser(res.getJSONObject("User"));
                     StringBuilder buffer = new StringBuilder();
                     JSONArray array = (JSONArray) wechat.getSyncKey().get("List");
                     array.forEach(i -> {
@@ -179,9 +186,9 @@ public class WechatBotService {
                 "pass_ticket=" + wechat.getPassTicket() +
                 "&skey=" + wechat.getSkey() +
                 "&r=" + System.currentTimeMillis();
-        MultiValueMap<String, Object> params = new LinkedMultiValueMap<>();
-        params.add("BaseRequest", wechat.getBaseRequest());
-        String res = sendRequest(url, params);
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("BaseRequest", wechat.getBaseRequest());
+        String res = restTemplate.postForObject(url, params, String.class);
         WechatContact wechatContact = new WechatContact();
 
         JSONObject object = JSONObject.parseObject(res);
@@ -235,13 +242,14 @@ public class WechatBotService {
         } else {
             url = "https://" + url + "/cgi-bin/mmwebwx-bin/synccheck";
         }
-        HttpRequest request = HttpRequest
-                .get(url, true, "r", DateKit.getCurrentUnixTime() + StringKit.getRandomNumber(5), "skey",
-                        wechat.getSkey(), "uin", wechat.getWxuin(), "sid", wechat.getWxsid(), "deviceid",
-                        wechat.getDeviceId(), "synckey", wechat.getSyncKeyStr(), "_", System.currentTimeMillis())
-                .header("Cookie", wechat.getCookie());
-        String res = request.body();
-        request.disconnect();
+        url = url + "?r=" + createRandom() +
+                "&skey=" + wechat.getSkey() +
+                "&uin=" + wechat.getWxuin() +
+                "&sid=" + wechat.getWxsid() +
+                "&deviceid=" + wechat.getDeviceId() +
+                "&synckey=" + wechat.getSyncKeyStr() +
+                "&_=" + DateUtil.currentTimeMillis();
+        String res = restTemplate.getForObject(UrlEncode.encode(url), String.class);
         int[] arr = new int[]{-1, -1};
         if (null == res) {
             return arr;
@@ -256,13 +264,43 @@ public class WechatBotService {
         return arr;
     }
 
+    /**
+     * 获取消息
+     */
+    public JSONObject webWxSync() {
+        String url = wechat.getBase_uri() + "/webwxsync?" + "skey=" + wechat.getSkey() + "&sid=" + wechat.getWxsid();
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("BaseRequest", wechat.getBaseRequest());
+        params.put("SyncKey", wechat.getSyncKey());
+        params.put("rr", DateUtil.currentTimeSeconds());
+        String resStr = restTemplate.postForObject(url, params, String.class);
+        JSONObject res = JSONObject.parseObject(resStr);
+        if (null != res) {
+            JSONObject BaseResponse = (JSONObject) res.get("BaseResponse");
+            if (null != BaseResponse) {
+                int ret = BaseResponse.getInteger("Ret");
+                if (ret == 0) {
+                    wechat.setSyncKey(res.getJSONObject("SyncKey"));
+                    StringBuilder buffer = new StringBuilder();
+                    JSONArray array = (JSONArray) wechat.getSyncKey().get("List");
+                    for (Object anArray : array) {
+                        JSONObject item = (JSONObject) anArray;
+                        buffer.append("|").append(item.getInteger("Key")).append("_").append(item.getInteger("Val"));
+                    }
+                    wechat.setSyncKeyStr(buffer.toString().substring(1));
+                }
+            }
+        }
+        return res;
+    }
+
 	private WechatContact getGroup(Wechat wechat) {
         String url = Constant.BASE_URL +
                 "/webwxbatchgetcontact?" +
                 "type=ex" +
                 "&pass_ticket=" + wechat.getPassTicket() +
                 "&r=" + System.currentTimeMillis();
-        String res = sendRequest(url, new LinkedMultiValueMap<>());
+        String res = restTemplate.getForObject(url, String.class);
         WechatContact wechatContact = new WechatContact();
         JSONObject object = JSONObject.parseObject(res);
         wechatContact.setContactCount((Integer) object.get("Count"));
@@ -270,19 +308,12 @@ public class WechatBotService {
         return wechatContact;
     }
 
-    private String sendRequest(String url, MultiValueMap<String, Object> params) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Cookie", wechat.getCookie());
-        HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(params, headers);
-        return restTemplate.getForObject(url, String.class, request);
-    }
-
     public String getUUID() {
         String url = Constant.JS_LOGIN_URL +
                 "?appid=" + Constant.APPID +
                 "&fun=new" +
                 "&lang=zh_CN" +
-                "&_=" + System.currentTimeMillis();
+                "&_=" + DateUtil.currentTimeMillis();
         String res = restTemplate.getForObject(url, String.class);
         if (null != res) {
             String code = Matchers.match("window.QRLogin.code = (\\d+);", res);
@@ -308,5 +339,35 @@ public class WechatBotService {
             }
         }
         return stringBuffer.toString();
+    }
+
+    public String createRandom() {
+        Double random = Math.random();
+        return DateUtil.currentTimeSeconds() + String.valueOf(random).substring(2, 7);
+    }
+
+    private void sendMsg(String content, String toUserName) {
+        String url = wechat.getBase_uri() + "/webwxsendmsg?" + "lang=zh_CN" + "&pass_ticket=" + wechat.getPassTicket();
+        Map<String, Object> body = new LinkedHashMap<>();
+        String clientMsgId = createRandom();
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("Type", 1);
+        msg.put("Content", content);
+        msg.put("FromUserName", wechat.getUser().getString("UserName"));
+        msg.put("ToUserName", toUserName);
+        msg.put("LocalID", clientMsgId);
+        msg.put("ClientMsgId", clientMsgId);
+        body.put("BaseRequest", wechat.getBaseRequest());
+        body.put("Msg", msg);
+        restTemplate.postForObject(url, body, String.class);
+    }
+
+    public static void main(String[] args) {
+        String u = "r=167889387281114&skey=@crypt_55aba910_e625e94d4bae4bc5214268c22945bc39&uin=247684175&sid=tHSk0Pw/ZkWarSTz&deviceid=e1678893797&synckey=1_827106158|2_827107216|3_827107137|1000_1678888802&_=1678893872682";
+        try {
+            System.out.println(URLEncoder.encode(u, "GBK"));
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

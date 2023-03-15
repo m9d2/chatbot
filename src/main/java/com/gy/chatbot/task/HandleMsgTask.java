@@ -1,11 +1,7 @@
 package com.gy.chatbot.task;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.blade.kit.DateKit;
-import com.blade.kit.StringKit;
-import com.blade.kit.http.HttpRequest;
 import com.gy.chatbot.bean.Wechat;
 import com.gy.chatbot.bean.WechatContact;
 import com.gy.chatbot.common.context.UserContext;
@@ -19,6 +15,7 @@ public class HandleMsgTask implements Runnable {
     private final WechatBotService wechatBotService;
     private final Wechat wechat;
     private final WechatContact wContact;
+
     public HandleMsgTask(WechatBotService wechatBotService) {
         this.wechatBotService = wechatBotService;
         this.wechat = wechatBotService.getWechat();
@@ -34,75 +31,38 @@ public class HandleMsgTask implements Runnable {
              * syncCheck[1]：0 正常，2 新的消息，7 进入/离开聊天界面
              */
             int[] syncCheck = wechatBotService.syncCheck();
-
             log.info("心跳检测...");
-            // 请求异常
-            if (syncCheck[0] == -1) {
-                break;
-
-            }
-            // 失败/登出微信
-            if (syncCheck[0] == 1100 || syncCheck[0] == 1101) {
+            if (syncCheck[0] == -1 || syncCheck[0] == 1100 || syncCheck[0] == 1101) {
                 UserContext.invalidate();
                 break;
             }
-            // 正常
             if (syncCheck[0] == 0) {
                 switch (syncCheck[1]) {
-                    case 0: // 正常
-                    case 2: { // 新的消息
-                        JSONObject object = this.webWxSync();
-                        this.handleMsg(object, wContact);
+                    case 0:
+                    case 2: {
+                        JSONObject object = wechatBotService.webWxSync();
+                        this.handleMsg(object);
                     }
                     case 3:
                     case 6: {
-                        JSONObject object = this.webWxSync();
-                        this.handleMsg(object, wContact);
+                        JSONObject object = wechatBotService.webWxSync();
+                        this.handleMsg(object);
                     }
-                    case 7: // 进入/离开聊天界面
+                    case 7:
                 }
             }
-        }
-    }
-
-    /**
-     * 获取消息
-     */
-    private JSONObject webWxSync() {
-        String url = wechat.getBase_uri() + "/webwxsync?" + "skey=" + wechat.getSkey() + "&sid=" + wechat.getWxsid();
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("BaseRequest", wechat.getBaseRequest());
-        jsonObject.put("SyncKey", wechat.getSyncKey());
-        jsonObject.put("rr", DateKit.getCurrentUnixTime());
-        HttpRequest request = HttpRequest.post(url).contentType(Constant.CONTENT_TYPE)
-                .header("Cookie", wechat.getCookie()).send(jsonObject.toString());
-        String res = request.body();
-        request.disconnect();
-
-        JSONObject object = JSON.parseObject(res);
-        if (null != object) {
-            JSONObject BaseResponse = (JSONObject) object.get("BaseResponse");
-            if (null != BaseResponse) {
-                int ret = BaseResponse.getInteger("Ret");
-                if (ret == 0) {
-                    wechat.setSyncKey(object.getJSONObject("SyncKey"));
-                    StringBuilder buffer = new StringBuilder();
-                    JSONArray array = (JSONArray) wechat.getSyncKey().get("List");
-                    for (Object anArray : array) {
-                        JSONObject item = (JSONObject) anArray;
-                        buffer.append("|").append(item.getInteger("Key")).append("_").append(item.getInteger("Val"));
-                    }
-                    wechat.setSyncKeyStr(buffer.toString().substring(1));
-                }
+            try {
+                Thread.sleep(2000);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }
-        return object;
     }
 
     /**
      * 消息处理
      */
-    private void handleMsg(JSONObject msgJson, WechatContact wechatContact) {
+    private void handleMsg(JSONObject msgJson) {
         if (wechat != null && msgJson != null) {
             // 用户ID
             String userName = wechat.getUser().getString("UserName");
@@ -117,11 +77,11 @@ public class HandleMsgTask implements Runnable {
                 // 发送消息用户ID
                 String fromUserName = msg.getString("FromUserName");
                 // 接收消息用户ID
-                 String toUserName = msg.getString("ToUserName");
+                String toUserName = msg.getString("ToUserName");
                 //消息内容
                 String content = msg.getString("Content");
                 // 消息时间
-                 String createTime = msg.getString("CreateTime");
+                String createTime = msg.getString("CreateTime");
                 // 初始化消息
                 switch (msgType) {
                     //文本消息
@@ -137,24 +97,12 @@ public class HandleMsgTask implements Runnable {
                             String sendUserNickName = this.getNickName(sendUserName);
                             String sendMsg = content.split(":")[1];
                             if (sendMsg.contains("@" + wechat.getUser().getString("NickName"))) {
-                                // 回复
-//                                String reply = TuLingAPI.getReply(
-//                                        sendMsg.replace("@" + wechat.getUser().getString("NickName"), ""),
-//                                        sendUserName.replace("@", "").substring(1, 10), wechat.getCity());
-//                                if (null != reply) {
-//								    this.sendMsg(wechat, reply, fromUserName);
-//                                }
+
                             }
                             log.info("新群聊消息 >> 昵称: {} 来自: {}, 消息内容: {}", nickName, sendUserNickName, sendMsg.replace("<br/>", ""));
                             //好友
                         } else {
                             log.info("新消息 >> 昵称: {}, 消息内容: {}", nickName, content);
-                            // 回复消息
-//                            String reply = TuLingAPI.getReply(content, fromUserName.replace("@", "").substring(1, 10),
-//                                    wechat.getCity());
-//                            if (null != reply) {
-//							    this.sendMsg(wechat, reply, fromUserName);
-//                            }
                         }
                         break;
                     //图片消息
@@ -178,25 +126,6 @@ public class HandleMsgTask implements Runnable {
 
             }
         }
-    }
-
-    private void sendMsg(String content, String toUserName) {
-        String url = wechat.getBase_uri() + "/webwxsendmsg?" + "lang=zh_CN" + "&pass_ticket=" + wechat.getPassTicket();
-        JSONObject body = new JSONObject();
-        String clientMsgId = DateKit.getCurrentUnixTime() + StringKit.getRandomNumber(5);
-        JSONObject msg = new JSONObject();
-        msg.put("Type", 1);
-        msg.put("Content", content);
-        msg.put("FromUserName", wechat.getUser().getString("UserName"));
-        msg.put("ToUserName", toUserName);
-        msg.put("LocalID", clientMsgId);
-        msg.put("ClientMsgId", clientMsgId);
-        body.put("BaseRequest", wechat.getBaseRequest());
-        body.put("Msg", msg);
-        HttpRequest request = HttpRequest.post(url).contentType(Constant.CONTENT_TYPE)
-                .header("Cookie", wechat.getCookie()).send(body.toString());
-        request.body();
-        request.disconnect();
     }
 
     private String getNickName(String userName) {

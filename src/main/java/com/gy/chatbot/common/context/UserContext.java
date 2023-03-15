@@ -76,7 +76,11 @@ public class UserContext {
 	}
 
 	public static String getCookie() {
-		return Objects.requireNonNull(getWechat()).getCookie();
+		Wechat wechat = getWechat();
+		if (wechat == null) {
+			return null;
+		}
+		return wechat.getCookie();
 	}
 
 	/**
