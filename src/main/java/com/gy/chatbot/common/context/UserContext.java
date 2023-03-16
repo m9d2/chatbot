@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import javax.servlet.http.HttpSession;
 import java.lang.reflect.Field;
 import java.util.Map;
-import java.util.Objects;
 
 @Slf4j
 public class UserContext {
@@ -50,10 +49,10 @@ public class UserContext {
 			Field[] fields = wechat.getClass().getDeclaredFields();
 			for(Field field : fields) {
 				field.setAccessible(true);
-				String vaule = map.get(field.getName());
-				if(vaule != null) {
+				String value = map.get(field.getName());
+				if(value != null) {
 					try {
-						field.set(wechat, vaule);
+						field.set(wechat, value);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}

@@ -1,7 +1,10 @@
 package com.gy.chatbot.task;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.blade.kit.DateKit;
+import com.blade.kit.http.HttpRequest;
 import com.gy.chatbot.bean.Wechat;
 import com.gy.chatbot.bean.WechatContact;
 import com.gy.chatbot.common.context.UserContext;
@@ -57,6 +60,40 @@ public class HandleMsgTask implements Runnable {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    /**
+     * 获取消息
+     */
+    private JSONObject webWxSync(Wechat wechat) {
+        String url = wechat.getBase_uri() + "/webwxsync?" + "skey=" + wechat.getSkey() + "&sid=" + wechat.getWxsid();
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("BaseRequest", wechat.getBaseRequest());
+        jsonObject.put("SyncKey", wechat.getSyncKey());
+        jsonObject.put("rr", DateKit.getCurrentUnixTime());
+        HttpRequest request = HttpRequest.post(url).contentType(Constant.CONTENT_TYPE)
+                .header("Cookie", wechat.getCookie()).send(jsonObject.toString());
+        String res = request.body();
+        request.disconnect();
+
+        JSONObject object = JSON.parseObject(res);
+        if (null != object) {
+            JSONObject BaseResponse = (JSONObject) object.get("BaseResponse");
+            if (null != BaseResponse) {
+                int ret = BaseResponse.getInteger("Ret");
+                if (ret == 0) {
+                    wechat.setSyncKey(object.getJSONObject("SyncKey"));
+                    StringBuilder buffer = new StringBuilder();
+                    JSONArray array = (JSONArray) wechat.getSyncKey().get("List");
+                    for (Object anArray : array) {
+                        JSONObject item = (JSONObject) anArray;
+                        buffer.append("|").append(item.getInteger("Key")).append("_").append(item.getInteger("Val"));
+                    }
+                    wechat.setSyncKeyStr(buffer.toString().substring(1));
+                }
+            }
+        }
+        return object;
     }
 
     /**

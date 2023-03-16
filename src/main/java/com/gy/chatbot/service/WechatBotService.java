@@ -6,7 +6,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.blade.kit.DateKit;
 import com.blade.kit.StringKit;
 import com.blade.kit.http.HttpRequest;
-import com.blade.kit.http.HttpRequestException;
+import com.google.common.collect.Maps;
 import com.gy.chatbot.bean.Wechat;
 import com.gy.chatbot.bean.WechatContact;
 import com.gy.chatbot.common.ServiceException;
@@ -17,12 +17,12 @@ import com.gy.chatbot.common.utils.Matchers;
 import com.gy.chatbot.common.utils.UrlEncode;
 import com.gy.chatbot.task.HandleMsgTask;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.*;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -136,7 +136,7 @@ public class WechatBotService {
         wechat.setBaseRequest(baseRequest);
         params.put("BaseRequest", wechat.getBaseRequest());
 
-        String resStr = restTemplate.postForObject(url, params, String.class);
+        String resStr = restTemplate.postForObject(url, getRequest(params), String.class);
         JSONObject res = JSONObject.parseObject(resStr);
         if (null != res) {
             JSONObject BaseResponse = (JSONObject) res.get("BaseResponse");
@@ -188,7 +188,7 @@ public class WechatBotService {
                 "&r=" + System.currentTimeMillis();
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("BaseRequest", wechat.getBaseRequest());
-        String res = restTemplate.postForObject(url, params, String.class);
+        String res = restTemplate.postForObject(url, getRequest(params), String.class);
         WechatContact wechatContact = new WechatContact();
 
         JSONObject object = JSONObject.parseObject(res);
@@ -242,14 +242,25 @@ public class WechatBotService {
         } else {
             url = "https://" + url + "/cgi-bin/mmwebwx-bin/synccheck";
         }
-        url = url + "?r=" + createRandom() +
+        url = url + "?r=" + DateKit.getCurrentUnixTime() + StringKit.getRandomNumber(5) +
                 "&skey=" + wechat.getSkey() +
                 "&uin=" + wechat.getWxuin() +
                 "&sid=" + wechat.getWxsid() +
                 "&deviceid=" + wechat.getDeviceId() +
                 "&synckey=" + wechat.getSyncKeyStr() +
-                "&_=" + DateUtil.currentTimeMillis();
-        String res = restTemplate.getForObject(UrlEncode.encode(url), String.class);
+                "&_=" + System.currentTimeMillis();
+//        HttpHeaders headers = new HttpHeaders();
+//        headers.set(HttpHeaders.COOKIE, wechat.getCookie());
+//        HttpEntity<MultiValueMap<String, Object>> formEntity = new HttpEntity<>(headers);
+//        ResponseEntity<String> response = restTemplate.exchange(UrlEncode.encode(url), HttpMethod.GET, formEntity, String.class);
+//        String res = response.getBody();
+
+        HttpRequest request = HttpRequest
+                .get(UrlEncode.encode(url))
+                .header(HttpHeaders.COOKIE, wechat.getCookie());
+        String res = request.body();
+        request.disconnect();
+
         int[] arr = new int[]{-1, -1};
         if (null == res) {
             return arr;
@@ -264,23 +275,33 @@ public class WechatBotService {
         return arr;
     }
 
+
     /**
      * 获取消息
      */
     public JSONObject webWxSync() {
-        String url = wechat.getBase_uri() + "/webwxsync?" + "skey=" + wechat.getSkey() + "&sid=" + wechat.getWxsid();
-        Map<String, Object> params = new LinkedHashMap<>();
+        String url = wechat.getBase_uri() + "/webwxsync?" + "&sid=" + wechat.getWxsid() + "skey=" + wechat.getSkey();
+        Map<String, Object> params = new HashMap<>();
         params.put("BaseRequest", wechat.getBaseRequest());
         params.put("SyncKey", wechat.getSyncKey());
         params.put("rr", DateUtil.currentTimeSeconds());
-        String resStr = restTemplate.postForObject(url, params, String.class);
-        JSONObject res = JSONObject.parseObject(resStr);
-        if (null != res) {
-            JSONObject BaseResponse = (JSONObject) res.get("BaseResponse");
+
+//        HttpRequest request = HttpRequest.post(url).contentType(Constant.CONTENT_TYPE)
+//                .header("Cookie", wechat.getCookie()).send(jsonObject.toString());
+//        String res = request.body();
+//        request.disconnect();
+
+        String res = restTemplate.postForObject(url, getRequest(params), String.class);
+        JSONObject object = JSON.parseObject(res);
+
+
+
+        if (null != object) {
+            JSONObject BaseResponse = (JSONObject) object.get("BaseResponse");
             if (null != BaseResponse) {
                 int ret = BaseResponse.getInteger("Ret");
                 if (ret == 0) {
-                    wechat.setSyncKey(res.getJSONObject("SyncKey"));
+                    wechat.setSyncKey(object.getJSONObject("SyncKey"));
                     StringBuilder buffer = new StringBuilder();
                     JSONArray array = (JSONArray) wechat.getSyncKey().get("List");
                     for (Object anArray : array) {
@@ -291,7 +312,7 @@ public class WechatBotService {
                 }
             }
         }
-        return res;
+        return object;
     }
 
 	private WechatContact getGroup(Wechat wechat) {
@@ -300,7 +321,9 @@ public class WechatBotService {
                 "type=ex" +
                 "&pass_ticket=" + wechat.getPassTicket() +
                 "&r=" + System.currentTimeMillis();
-        String res = restTemplate.getForObject(url, String.class);
+        Map<String, Object> params = Maps.newHashMap();
+        params.put("BaseRequest", wechat.getBaseRequest());
+        String res = restTemplate.postForObject(url, getRequest(params), String.class);
         WechatContact wechatContact = new WechatContact();
         JSONObject object = JSONObject.parseObject(res);
         wechatContact.setContactCount((Integer) object.get("Count"));
@@ -326,26 +349,6 @@ public class WechatBotService {
         return Matchers.match("window.QRLogin.uuid = \"(.*)\";", res);
     }
 
-    private String getCookie(ResponseEntity<String> response) {
-        StringBuilder stringBuffer = new StringBuilder();
-        List<String> values = response.getHeaders().get("Set-Cookie");
-        if (values != null) {
-            for (String value : values) {
-                if (value == null) {
-                    continue;
-                }
-                String cookie = value.substring(0, value.indexOf(";") + 1);
-                stringBuffer.append(cookie);
-            }
-        }
-        return stringBuffer.toString();
-    }
-
-    public String createRandom() {
-        Double random = Math.random();
-        return DateUtil.currentTimeSeconds() + String.valueOf(random).substring(2, 7);
-    }
-
     private void sendMsg(String content, String toUserName) {
         String url = wechat.getBase_uri() + "/webwxsendmsg?" + "lang=zh_CN" + "&pass_ticket=" + wechat.getPassTicket();
         Map<String, Object> body = new LinkedHashMap<>();
@@ -362,12 +365,30 @@ public class WechatBotService {
         restTemplate.postForObject(url, body, String.class);
     }
 
-    public static void main(String[] args) {
-        String u = "r=167889387281114&skey=@crypt_55aba910_e625e94d4bae4bc5214268c22945bc39&uin=247684175&sid=tHSk0Pw/ZkWarSTz&deviceid=e1678893797&synckey=1_827106158|2_827107216|3_827107137|1000_1678888802&_=1678893872682";
-        try {
-            System.out.println(URLEncoder.encode(u, "GBK"));
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
+    private HttpEntity<Map<String, Object>> getRequest(Map<String, Object> params) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.COOKIE, wechat.getCookie());
+        headers.set(HttpHeaders.CONTENT_TYPE, Constant.CONTENT_TYPE);
+        return new HttpEntity<>(params, headers);
+    }
+
+    private String getCookie(ResponseEntity<String> response) {
+        StringBuilder stringBuffer = new StringBuilder();
+        List<String> values = response.getHeaders().get("Set-Cookie");
+        if (values != null) {
+            for (String value : values) {
+                if (value == null) {
+                    continue;
+                }
+                String cookie = value.substring(0, value.indexOf(";") + 1);
+                stringBuffer.append(cookie);
+            }
         }
+        return stringBuffer.toString();
+    }
+
+    private String createRandom() {
+        Double random = Math.random();
+        return DateUtil.currentTimeSeconds() + String.valueOf(random).substring(2, 7);
     }
 }
