@@ -13,13 +13,12 @@ public interface Constant {
     String PUSH_URL = "https://webpush2.weixin.qq.com/cgi-bin/mmwebwx-bin";
     String CONTENT_TYPE = "application/json;charset=utf-8";
     String[] HOST = {
-            "webpush.wx.qq.com",
-            "webpush.weixin.qq.com",
-            "webpush2.weixin.qq.com",
-            "webpush.wechat.com",
-            "webpush1.wechat.com",
-            "webpush2.wechat.com",
-            "webpush1.wechatapp.com"
+            "https://webpush.wx.qq.com/cgi-bin/mmwebwx-bin/synccheck",
+            "https://webpush.weixin.qq.com/cgi-bin/mmwebwx-bin/synccheck",
+            "https://webpush2.weixin.qq.com/cgi-bin/mmwebwx-bin/synccheck",
+            "https://webpush.wechat.com/cgi-bin/mmwebwx-bin/synccheck",
+            "https://webpush1.wechat.com/cgi-bin/mmwebwx-bin/synccheck",
+            "https://webpush2.wechat.com/cgi-bin/mmwebwx-bin/synccheck"
     };
     List<String> FILTER_USERS = Arrays.asList("newsapp", "fmessage", "filehelper", "weibo", "qqmail",
             "fmessage", "tmessage", "qmessage", "qqsync", "floatbottle", "lbsapp", "shakeapp", "medianote", "qqfriend",

@@ -1,20 +1,17 @@
 package com.gy.chatbot.bean;
 
-import com.alibaba.fastjson.JSONObject;
 import com.gy.chatbot.common.utils.Constant;
 import com.gy.chatbot.common.utils.DateUtil;
 import lombok.Data;
 
-import java.util.Map;
-
 @Data
-public class Wechat {
+public class WechatStorage {
 
     private String base_uri;
 
     private String redirect_uri;
 
-    private String webpush_url = Constant.BASE_URL;
+    private String webPushUrl;
 
     private String uuid;
 
@@ -36,9 +33,8 @@ public class Wechat {
 
     private String city;
 
-    /** 微信初始化参数 **/
-    private Map<String, Object> baseRequest;
-    private JSONObject syncKey;
-    private JSONObject user;
+    private BaseRequest baseRequest;
+    private SyncKey syncKey;
+    private User user;
 
 }

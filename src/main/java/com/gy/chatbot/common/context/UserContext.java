@@ -1,7 +1,7 @@
 package com.gy.chatbot.common.context;
 
 
-import com.gy.chatbot.bean.Wechat;
+import com.gy.chatbot.bean.WechatStorage;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.servlet.http.HttpSession;
@@ -29,7 +29,7 @@ public class UserContext {
 	 * 设置用户wechat对象到Session中
 	 * @param wechat
 	 */
-	public static void setWechat(Wechat wechat){
+	public static void setWechat(WechatStorage wechat){
 		HttpSession session = getHttpSession();
 		if(session != null){
 			session.setAttribute(LOCAL_WECHAT_KEY, wechat);
@@ -39,12 +39,12 @@ public class UserContext {
 
 	public static void setWechat(Map<String, String> map) {
 		HttpSession session = getHttpSession();
-		Wechat wechat = null;
+		WechatStorage wechat = null;
 		if(session != null){
 			if(getWechat() != null) {
 				wechat = getWechat();
 			}else {
-				wechat = new Wechat();
+				wechat = new WechatStorage();
 			}
 			Field[] fields = wechat.getClass().getDeclaredFields();
 			for(Field field : fields) {
@@ -62,20 +62,20 @@ public class UserContext {
 		}
 	}
 
-	public static Wechat getWechat(){
+	public static WechatStorage getWechat(){
 		HttpSession session = getHttpSession();
 		if(session != null){
-			return (Wechat) session.getAttribute(LOCAL_WECHAT_KEY);
+			return (WechatStorage) session.getAttribute(LOCAL_WECHAT_KEY);
 		}
 		return null;
 	}
 
-	private static Wechat getWechat(HttpSession httpSession) {
-		return (Wechat) httpSession.getAttribute(LOCAL_WECHAT_KEY);
+	private static WechatStorage getWechat(HttpSession httpSession) {
+		return (WechatStorage) httpSession.getAttribute(LOCAL_WECHAT_KEY);
 	}
 
 	public static String getCookie() {
-		Wechat wechat = getWechat();
+		WechatStorage wechat = getWechat();
 		if (wechat == null) {
 			return null;
 		}
@@ -87,7 +87,7 @@ public class UserContext {
 	 */
 	public static void invalidate(){
 		HttpSession session = getHttpSession();
-		Wechat wechat;
+		WechatStorage wechat;
 		if(session != null){
 			wechat = getWechat(session);
 			session.invalidate();

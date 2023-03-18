@@ -1,14 +1,9 @@
 package com.gy.chatbot.task;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.blade.kit.DateKit;
-import com.blade.kit.http.HttpRequest;
-import com.gy.chatbot.bean.Wechat;
-import com.gy.chatbot.bean.WechatContact;
+import com.gy.chatbot.bean.AddMsgList;
+import com.gy.chatbot.bean.Message;
+import com.gy.chatbot.bean.WechatStorage;
 import com.gy.chatbot.common.context.UserContext;
-import com.gy.chatbot.common.utils.Constant;
 import com.gy.chatbot.service.WechatBotService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,42 +11,33 @@ import lombok.extern.slf4j.Slf4j;
 public class HandleMsgTask implements Runnable {
 
     private final WechatBotService wechatBotService;
-    private final Wechat wechat;
-    private final WechatContact wContact;
+
+    private final WechatStorage wechatStorage;
 
     public HandleMsgTask(WechatBotService wechatBotService) {
         this.wechatBotService = wechatBotService;
-        this.wechat = wechatBotService.getWechat();
-        this.wContact = wechatBotService.getContact();
+        this.wechatStorage = wechatBotService.getWechat();
     }
 
     @Override
     public void run() {
         while (true) {
-            /*
-             * 监测心跳 默认为[-1,-1](请求异常)
-             * syncCheck[0]：0 正常，1100 失败/登出微信
-             * syncCheck[1]：0 正常，2 新的消息，7 进入/离开聊天界面
-             */
             int[] syncCheck = wechatBotService.syncCheck();
-            log.info("心跳检测...");
-            if (syncCheck[0] == -1 || syncCheck[0] == 1100 || syncCheck[0] == 1101) {
+            int statusCode = syncCheck[0];
+            int msgCode =  syncCheck[1];
+            if (statusCode == 1100) {
+                log.info("退出登录");
+                UserContext.invalidate();
+            }
+            if (statusCode == -1 || statusCode == 1101) {
+                log.error("登录失败");
                 UserContext.invalidate();
                 break;
             }
-            if (syncCheck[0] == 0) {
-                switch (syncCheck[1]) {
-                    case 0:
-                    case 2: {
-                        JSONObject object = wechatBotService.webWxSync();
-                        this.handleMsg(object);
-                    }
-                    case 3:
-                    case 6: {
-                        JSONObject object = wechatBotService.webWxSync();
-                        this.handleMsg(object);
-                    }
-                    case 7:
+            if (statusCode == 0) {
+                if (msgCode == 2 || msgCode == 6) {
+                    Message message = wechatBotService.webWxSync();
+                    this.handleMsg(message);
                 }
             }
             try {
@@ -63,118 +49,16 @@ public class HandleMsgTask implements Runnable {
     }
 
     /**
-     * 获取消息
-     */
-    private JSONObject webWxSync(Wechat wechat) {
-        String url = wechat.getBase_uri() + "/webwxsync?" + "skey=" + wechat.getSkey() + "&sid=" + wechat.getWxsid();
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("BaseRequest", wechat.getBaseRequest());
-        jsonObject.put("SyncKey", wechat.getSyncKey());
-        jsonObject.put("rr", DateKit.getCurrentUnixTime());
-        HttpRequest request = HttpRequest.post(url).contentType(Constant.CONTENT_TYPE)
-                .header("Cookie", wechat.getCookie()).send(jsonObject.toString());
-        String res = request.body();
-        request.disconnect();
-
-        JSONObject object = JSON.parseObject(res);
-        if (null != object) {
-            JSONObject BaseResponse = (JSONObject) object.get("BaseResponse");
-            if (null != BaseResponse) {
-                int ret = BaseResponse.getInteger("Ret");
-                if (ret == 0) {
-                    wechat.setSyncKey(object.getJSONObject("SyncKey"));
-                    StringBuilder buffer = new StringBuilder();
-                    JSONArray array = (JSONArray) wechat.getSyncKey().get("List");
-                    for (Object anArray : array) {
-                        JSONObject item = (JSONObject) anArray;
-                        buffer.append("|").append(item.getInteger("Key")).append("_").append(item.getInteger("Val"));
-                    }
-                    wechat.setSyncKeyStr(buffer.toString().substring(1));
-                }
-            }
-        }
-        return object;
-    }
-
-    /**
      * 消息处理
      */
-    private void handleMsg(JSONObject msgJson) {
-        if (wechat != null && msgJson != null) {
-            // 用户ID
-            String userName = wechat.getUser().getString("UserName");
-            // 消息列表
-            JSONArray addMsgList = msgJson.getJSONArray("AddMsgList");
-
-            // 遍历消息列表
-            for (Object anAddMsgList : addMsgList) {
-                JSONObject msg = (JSONObject) anAddMsgList;
-                // 消息类型
-                int msgType = (int) msg.get("MsgType");
-                // 发送消息用户ID
-                String fromUserName = msg.getString("FromUserName");
-                // 接收消息用户ID
-                String toUserName = msg.getString("ToUserName");
-                //消息内容
-                String content = msg.getString("Content");
-                // 消息时间
-                String createTime = msg.getString("CreateTime");
-                // 初始化消息
-                switch (msgType) {
-                    //文本消息
-                    case 1:
-                        String nickName = this.getNickName(fromUserName);
-                        // 自己
-                        if (fromUserName.equals(userName)) {
-                            // 特殊号
-                        } else if (Constant.FILTER_USERS.contains(fromUserName)) {
-                            // 群聊
-                        } else if (fromUserName.contains("@@")) {
-                            String sendUserName = content.split(":")[0];
-                            String sendUserNickName = this.getNickName(sendUserName);
-                            String sendMsg = content.split(":")[1];
-                            if (sendMsg.contains("@" + wechat.getUser().getString("NickName"))) {
-
-                            }
-                            log.info("新群聊消息 >> 昵称: {} 来自: {}, 消息内容: {}", nickName, sendUserNickName, sendMsg.replace("<br/>", ""));
-                            //好友
-                        } else {
-                            log.info("新消息 >> 昵称: {}, 消息内容: {}", nickName, content);
-                        }
-                        break;
-                    //图片消息
-                    case 3:
-                        break;
-                    //语音消息
-                    case 34:
-                        break;
-                    //动画表情
-                    case 42:
-                        break;
-                    case 49:
-                        break;
-                    case 51:
-                        break;
-                    //系统消息
-                    case 10000:
-                        break;
-                    default:
+    private void handleMsg(Message message) {
+        if (message != null) {
+            for (AddMsgList msg : message.getAddMsgList()) {
+                if (msg.getMsgType() == 1) {
+                    log.info("From: {} >> {}", msg.getFromUserName(), msg.getContent());
                 }
-
             }
         }
-    }
-
-    private String getNickName(String userName) {
-        final String[] nickName = {null};
-        JSONArray members = wContact.getMemberList();
-        members.forEach(i -> {
-            JSONObject item = (JSONObject) i;
-            if (item.getString("UserName").equals(userName)) {
-                nickName[0] = item.getString("NickName");
-            }
-        });
-        return nickName[0];
     }
 
 }

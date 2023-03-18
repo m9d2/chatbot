@@ -1,16 +1,17 @@
 package com.gy.chatbot.controller;
 
-import com.gy.chatbot.bean.WechatContact;
 import com.gy.chatbot.common.context.UserContext;
 import com.gy.chatbot.common.utils.Constant;
-import com.gy.chatbot.common.utils.JsonUtils;
 import com.gy.chatbot.service.WechatBotService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -25,6 +26,9 @@ public class WechatBotController {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private ThreadPoolTaskExecutor threadPoolTaskExecutor;
+
     /**
      * 获取微信二维码url
      *
@@ -32,7 +36,7 @@ public class WechatBotController {
      */
     @GetMapping
     public String getImageUrl(Model model) {
-        WechatBotService wechatBotService = new WechatBotService(restTemplate);
+        WechatBotService wechatBotService = new WechatBotService(restTemplate, threadPoolTaskExecutor);
         String uuid = wechatBotService.getUUID();
         Map<String, String> map = new HashMap<>();
         map.put("uuid", uuid);
@@ -44,22 +48,22 @@ public class WechatBotController {
 
     @RequestMapping("login")
     public String getUrl(Model model) {
-        WechatBotService wechatBotService = new WechatBotService(restTemplate);
+        WechatBotService wechatBotService = new WechatBotService(restTemplate, threadPoolTaskExecutor);
         int ret = wechatBotService.login();
         if(ret != -1) {
             while (ret == 201) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
                 wechatBotService.login();
             }
             if (ret == 200) {
                 wechatBotService.start();
-                WechatContact wechatContact = wechatBotService.getContact();
-                model.addAttribute(wechatContact);
+//                WechatContact wechatContact = wechatBotService.getContact();
+//                model.addAttribute(wechatContact);
                 return "redirect: /contact";
-            }
-            if(ret == 408) {
-                return "redirect: /error";
-            } else {
-                return "redirect: /error";
             }
         }
         return "redirect: /error";
@@ -67,27 +71,16 @@ public class WechatBotController {
 
     @RequestMapping("contact")
     public String getContact(Model model) throws IOException {
-//    	Wechat wechat = UserContext.getWechat();
-//    	if(wechat == null) {
-//            return "error";
-//    	}
-//        WechatContact wechatContact = wechatBotService.getContact();
-        WechatContact wechatContact = JsonUtils.readJsonFromClassPath("/data.json", WechatContact.class);
-        if (null != wechatContact) {
-            model.addAttribute("contact", wechatContact);
-            return "contact";
-        } else {
-            return "error";
-        }
+        return null;
     }
 
     @GetMapping("send")
-    public Integer sendMessage(String msg) {
-        log.info(msg);
-        return 200;
+    @ResponseBody
+    public ResponseEntity<Integer> sendMessage(String msg) {
+        return ResponseEntity.ok(200);
     }
 
-    @RequestMapping("logout")
+    @GetMapping("logout")
     public String logout() {
         UserContext.invalidate();
         return "index";
